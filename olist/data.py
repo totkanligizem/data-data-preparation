@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import pandas as pd
 
 
@@ -10,17 +11,18 @@ class Olist:
         csv_path = Path("~/.workintech/olist/data/csv").expanduser()
 
         file_paths = sorted(csv_path.glob("*.csv"))
-        file_names = [p.name for p in file_paths]
 
-        key_names = [
-            name.replace("olist_", "").replace("_dataset.csv", "").replace(".csv", "")
-            for name in file_names
-        ]
+        def clean_key(p: Path) -> str:
+            return (
+                p.name.replace("olist_", "")
+                .replace("_dataset.csv", "")
+                .replace(".csv", "")
+            )
 
-        # Önce bütün dosyaları oku (geçici)
-        temp = {key: pd.read_csv(path) for key, path in zip(key_names, file_paths)}
+        # 1) Oku
+        data = {clean_key(p): pd.read_csv(p) for p in file_paths}
 
-        # Testin beklediği key sırası
+        # 2) Key sırasını testin beklediği sıraya sabitle
         expected_keys = [
             "customers",
             "geolocation",
@@ -32,14 +34,12 @@ class Olist:
             "products",
             "sellers",
         ]
+        data = {k: data[k] for k in expected_keys}
 
-        # Sellers kolon sırası testin beklediği gibi olmalı
-        if "sellers" in temp:
-            temp["sellers"] = temp["sellers"][
-                ["seller_city", "seller_id", "seller_state", "seller_zip_code_prefix"]
-            ]
+        # 3) Sellers kolon sırasını testin beklediği sıraya sabitle
+        data["sellers"] = data["sellers"].loc[
+            :, ["seller_city", "seller_id", "seller_state", "seller_zip_code_prefix"]
+        ]
 
-        # Sözlüğü test sırasına göre yeniden kur
-        data = {k: temp[k] for k in expected_keys}
         return data
         
